@@ -10,7 +10,7 @@ from huggingface_hub import hf_hub_download
 from PIL import Image
 from tqdm import tqdm
 
-import library.train_util as train_util
+import sd_scripts.train_util as train_util
 
 # from wd14 tagger
 IMAGE_SIZE = 448

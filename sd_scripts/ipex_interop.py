@@ -14,7 +14,7 @@ def init_ipex():
         return
 
     try:
-        from library.ipex import ipex_init
+        from sd_scripts.ipex import ipex_init
 
         if torch.xpu.is_available():
             is_initialized, error_message = ipex_init()

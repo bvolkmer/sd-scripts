@@ -274,7 +274,7 @@ if __name__ == "__main__":
     import argparse
     import torch
     from safetensors.torch import load_file
-    from library import train_util
+    from sd_scripts import train_util
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--ckpt", type=str, required=True)

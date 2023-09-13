@@ -18,7 +18,7 @@ import diffusers
 import numpy as np
 import torch
 
-from library.ipex_interop import init_ipex
+from sd_scripts.ipex_interop import init_ipex
 
 init_ipex()
 
@@ -47,13 +47,13 @@ import PIL
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
 
-import library.model_util as model_util
-import library.train_util as train_util
-import library.sdxl_model_util as sdxl_model_util
-import library.sdxl_train_util as sdxl_train_util
+import sd_scripts.model_util as model_util
+import sd_scripts.train_util as train_util
+import sd_scripts.sdxl_model_util as sdxl_model_util
+import sd_scripts.sdxl_train_util as sdxl_train_util
 from networks.lora import LoRANetwork
-from library.sdxl_original_unet import InferSdxlUNet2DConditionModel
-from library.original_unet import FlashAttentionFunction
+from sd_scripts.sdxl_original_unet import InferSdxlUNet2DConditionModel
+from sd_scripts.original_unet import FlashAttentionFunction
 from networks.control_net_lllite import ControlNetLLLite
 
 # scheduler:
@@ -1501,7 +1501,7 @@ def main(args):
 
     # custom pipelineをコピったやつを生成する
     if args.vae_slices:
-        from library.slicing_vae import SlicingAutoencoderKL
+        from sd_scripts.slicing_vae import SlicingAutoencoderKL
 
         sli_vae = SlicingAutoencoderKL(
             act_fn="silu",

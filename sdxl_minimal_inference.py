@@ -10,7 +10,7 @@ from einops import repeat
 import numpy as np
 import torch
 
-from library.ipex_interop import init_ipex
+from sd_scripts.ipex_interop import init_ipex
 
 init_ipex()
 
@@ -21,7 +21,7 @@ from PIL import Image
 import open_clip
 from safetensors.torch import load_file
 
-from library import model_util, sdxl_model_util
+from sd_scripts import model_util, sdxl_model_util
 import networks.lora as lora
 
 # scheduler: このあたりの設定はSD1/2と同じでいいらしい

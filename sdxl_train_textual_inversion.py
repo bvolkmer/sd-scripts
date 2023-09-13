@@ -3,11 +3,11 @@ import os
 
 import regex
 import torch
-from library.ipex_interop import init_ipex
+from sd_scripts.ipex_interop import init_ipex
 
 init_ipex()
 import open_clip
-from library import sdxl_model_util, sdxl_train_util, train_util
+from sd_scripts import sdxl_model_util, sdxl_train_util, train_util
 
 import train_textual_inversion
 

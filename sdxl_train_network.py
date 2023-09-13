@@ -1,11 +1,11 @@
 import argparse
 import torch
 
-from library.ipex_interop import init_ipex
+from sd_scripts.ipex_interop import init_ipex
 
 init_ipex()
 
-from library import sdxl_model_util, sdxl_train_util, train_util
+from sd_scripts import sdxl_model_util, sdxl_train_util, train_util
 import train_network
 
 

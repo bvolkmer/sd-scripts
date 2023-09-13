@@ -9,10 +9,10 @@ from accelerate.utils import set_seed
 import torch
 from tqdm import tqdm
 
-from library import config_util
-from library import train_util
-from library import sdxl_train_util
-from library.config_util import (
+from sd_scripts import config_util
+from sd_scripts import train_util
+from sd_scripts import sdxl_train_util
+from sd_scripts.config_util import (
     ConfigSanitizer,
     BlueprintGenerator,
 )

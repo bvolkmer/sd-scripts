@@ -66,7 +66,7 @@ import diffusers
 import numpy as np
 import torch
 
-from library.ipex_interop import init_ipex
+from sd_scripts.ipex_interop import init_ipex
 
 init_ipex()
 
@@ -95,13 +95,13 @@ import PIL
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
 
-import library.model_util as model_util
-import library.train_util as train_util
+import sd_scripts.model_util as model_util
+import sd_scripts.train_util as train_util
 from networks.lora import LoRANetwork
 import tools.original_control_net as original_control_net
 from tools.original_control_net import ControlNetInfo
-from library.original_unet import UNet2DConditionModel, InferUNet2DConditionModel
-from library.original_unet import FlashAttentionFunction
+from sd_scripts.original_unet import UNet2DConditionModel, InferUNet2DConditionModel
+from sd_scripts.original_unet import FlashAttentionFunction
 
 from XTI_hijack import unet_forward_XTI, downblock_forward_XTI, upblock_forward_XTI
 
@@ -2329,7 +2329,7 @@ def main(args):
 
     # custom pipelineをコピったやつを生成する
     if args.vae_slices:
-        from library.slicing_vae import SlicingAutoencoderKL
+        from sd_scripts.slicing_vae import SlicingAutoencoderKL
 
         sli_vae = SlicingAutoencoderKL(
             act_fn="silu",
