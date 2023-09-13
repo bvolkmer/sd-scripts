@@ -14,14 +14,14 @@ from accelerate.utils import set_seed
 import diffusers
 from diffusers import DDPMScheduler
 
-import library.train_util as train_util
-import library.config_util as config_util
-from library.config_util import (
+import sd_scripts.train_util as train_util
+import sd_scripts.config_util as config_util
+from sd_scripts.config_util import (
     ConfigSanitizer,
     BlueprintGenerator,
 )
-import library.custom_train_functions as custom_train_functions
-from library.custom_train_functions import (
+import sd_scripts.custom_train_functions as custom_train_functions
+from sd_scripts.custom_train_functions import (
     apply_snr_weight,
     get_weighted_text_embeddings,
     prepare_scheduler_for_custom_training,

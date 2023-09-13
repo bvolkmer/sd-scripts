@@ -11,8 +11,8 @@ import cv2
 import torch
 from torchvision import transforms
 
-import library.model_util as model_util
-import library.train_util as train_util
+import sd_scripts.model_util as model_util
+import sd_scripts.train_util as train_util
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

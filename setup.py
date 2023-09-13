@@ -3,7 +3,7 @@ from pathlib import Path
 from setuptools import find_packages, setup
 
 setup(
-    name="library",
+    name="sd_scripts",
     packages=find_packages(),
     install_requires=list(
         filter(
