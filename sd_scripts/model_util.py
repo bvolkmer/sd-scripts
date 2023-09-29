@@ -1002,7 +1002,7 @@ def load_models_from_stable_diffusion_checkpoint(v2, ckpt_path, device="cpu", dt
 
     unet = UNet2DConditionModel(**unet_config).to(device)
     info = unet.load_state_dict(converted_unet_checkpoint)
-    print("loading u-net:", info)
+    # print("loading u-net:", info)
 
     # Convert the VAE model.
     vae_config = create_vae_diffusers_config()
@@ -1010,7 +1010,7 @@ def load_models_from_stable_diffusion_checkpoint(v2, ckpt_path, device="cpu", dt
 
     vae = AutoencoderKL(**vae_config).to(device)
     info = vae.load_state_dict(converted_vae_checkpoint)
-    print("loading vae:", info)
+    # print("loading vae:", info)
 
     # convert text_model
     if v2:
@@ -1067,7 +1067,7 @@ def load_models_from_stable_diffusion_checkpoint(v2, ckpt_path, device="cpu", dt
         )
         text_model = CLIPTextModel._from_config(cfg)
         info = text_model.load_state_dict(converted_text_encoder_checkpoint)
-    print("loading text encoder:", info)
+    # print("loading text encoder:", info)
 
     return text_model, vae, unet
 
@@ -1155,9 +1155,7 @@ def convert_text_encoder_state_dict_to_sd_v2(checkpoint, make_dummy_weights=Fals
     return new_sd
 
 
-def save_stable_diffusion_checkpoint(
-    v2, output_file, text_encoder, unet, ckpt_path, epochs, steps, metadata, save_dtype=None, vae=None
-):
+def save_stable_diffusion_checkpoint(v2, output_file, text_encoder, unet, ckpt_path, epochs, steps, save_dtype=None, vae=None):
     if ckpt_path is not None:
         # epoch/stepを参照する。またVAEがメモリ上にないときなど、もう一度VAEを含めて読み込む
         checkpoint, state_dict = load_checkpoint_with_text_encoder_conversion(ckpt_path)

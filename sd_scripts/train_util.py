@@ -784,10 +784,10 @@ class BaseDataset(torch.utils.data.Dataset):
             if info.image_size is None:
                 info.image_size = self.get_image_size(info.absolute_path)
 
-        if self.enable_bucket:
-            print("make buckets")
-        else:
-            print("prepare dataset")
+        # if self.enable_bucket:
+        #     print("make buckets")
+        # else:
+        #     print("prepare dataset")
 
         # bucketを作成し、画像をbucketに振り分ける
         if self.enable_bucket:
@@ -801,10 +801,10 @@ class BaseDataset(torch.utils.data.Dataset):
                 )
                 if not self.bucket_no_upscale:
                     self.bucket_manager.make_buckets()
-                else:
-                    print(
-                        "min_bucket_reso and max_bucket_reso are ignored if bucket_no_upscale is set, because bucket reso is defined by image size automatically / bucket_no_upscaleが指定された場合は、bucketの解像度は画像サイズから自動計算されるため、min_bucket_resoとmax_bucket_resoは無視されます"
-                    )
+                # else:
+                #     print(
+                #         "min_bucket_reso and max_bucket_reso are ignored if bucket_no_upscale is set, because bucket reso is defined by image size automatically / bucket_no_upscaleが指定された場合は、bucketの解像度は画像サイズから自動計算されるため、min_bucket_resoとmax_bucket_resoは無視されます"
+                #     )
 
             img_ar_errors = []
             for image_info in self.image_data.values():
@@ -836,12 +836,12 @@ class BaseDataset(torch.utils.data.Dataset):
                 count = len(bucket)
                 if count > 0:
                     self.bucket_info["buckets"][i] = {"resolution": reso, "count": len(bucket)}
-                    print(f"bucket {i}: resolution {reso}, count: {len(bucket)}")
+                    # print(f"bucket {i}: resolution {reso}, count: {len(bucket)}")
 
             img_ar_errors = np.array(img_ar_errors)
             mean_img_ar_error = np.mean(np.abs(img_ar_errors))
             self.bucket_info["mean_img_ar_error"] = mean_img_ar_error
-            print(f"mean ar error (without repeats): {mean_img_ar_error}")
+            # print(f"mean ar error (without repeats): {mean_img_ar_error}")
 
         # データ参照用indexを作る。このindexはdatasetのshuffleに用いられる
         self.buckets_indices: List(BucketBatchIndex) = []
@@ -900,7 +900,7 @@ class BaseDataset(torch.utils.data.Dataset):
 
     def cache_latents(self, vae, vae_batch_size=1, cache_to_disk=False, is_main_process=True):
         # マルチGPUには対応していないので、そちらはtools/cache_latents.pyを使うこと
-        print("caching latents.")
+        # print("caching latents.")
 
         image_infos = list(self.image_data.values())
 
@@ -1454,7 +1454,7 @@ class DreamBoothDataset(BaseDataset):
                     print(missing_caption)
             return img_paths, captions
 
-        print("prepare images.")
+        # print("prepare images.")
         num_train_images = 0
         num_reg_images = 0
         reg_infos: List[ImageInfo] = []
@@ -1930,7 +1930,7 @@ class DatasetGroup(torch.utils.data.ConcatDataset):
         self, tokenizers, text_encoders, device, weight_dtype, cache_to_disk=False, is_main_process=True
     ):
         for i, dataset in enumerate(self.datasets):
-            print(f"[Dataset {i}]")
+            # print(f"[Dataset {i}]")
             dataset.cache_text_encoder_outputs(tokenizers, text_encoders, device, weight_dtype, cache_to_disk, is_main_process)
 
     def set_caching_mode(self, caching_mode):
@@ -3501,7 +3501,7 @@ def get_optimizer(args, trainable_params):
             import lion_pytorch
         except ImportError:
             raise ImportError("No lion_pytorch / lion_pytorch がインストールされていないようです")
-        print(f"use Lion optimizer | {optimizer_kwargs}")
+        # print(f"use Lion optimizer | {optimizer_kwargs}")
         optimizer_class = lion_pytorch.Lion
         optimizer = optimizer_class(trainable_params, lr=lr, **optimizer_kwargs)
 
@@ -3512,12 +3512,12 @@ def get_optimizer(args, trainable_params):
             raise ImportError("No bitsandbytes / bitsandbytesがインストールされていないようです")
 
         if optimizer_type == "AdamW8bit".lower():
-            print(f"use 8-bit AdamW optimizer | {optimizer_kwargs}")
+            # print(f"use 8-bit AdamW optimizer | {optimizer_kwargs}")
             optimizer_class = bnb.optim.AdamW8bit
             optimizer = optimizer_class(trainable_params, lr=lr, **optimizer_kwargs)
 
         elif optimizer_type == "SGDNesterov8bit".lower():
-            print(f"use 8-bit SGD with Nesterov optimizer | {optimizer_kwargs}")
+            # print(f"use 8-bit SGD with Nesterov optimizer | {optimizer_kwargs}")
             if "momentum" not in optimizer_kwargs:
                 print(
                     f"8-bit SGD with Nesterov must be with momentum, set momentum to 0.9 / 8-bit SGD with Nesterovはmomentum指定が必須のため0.9に設定します"
@@ -3528,7 +3528,7 @@ def get_optimizer(args, trainable_params):
             optimizer = optimizer_class(trainable_params, lr=lr, nesterov=True, **optimizer_kwargs)
 
         elif optimizer_type == "Lion8bit".lower():
-            print(f"use 8-bit Lion optimizer | {optimizer_kwargs}")
+            # print(f"use 8-bit Lion optimizer | {optimizer_kwargs}")
             try:
                 optimizer_class = bnb.optim.Lion8bit
             except AttributeError:
@@ -3536,7 +3536,7 @@ def get_optimizer(args, trainable_params):
                     "No Lion8bit. The version of bitsandbytes installed seems to be old. Please install 0.38.0 or later. / Lion8bitが定義されていません。インストールされているbitsandbytesのバージョンが古いようです。0.38.0以上をインストールしてください"
                 )
         elif optimizer_type == "PagedAdamW8bit".lower():
-            print(f"use 8-bit PagedAdamW optimizer | {optimizer_kwargs}")
+            # print(f"use 8-bit PagedAdamW optimizer | {optimizer_kwargs}")
             try:
                 optimizer_class = bnb.optim.PagedAdamW8bit
             except AttributeError:
@@ -3544,7 +3544,7 @@ def get_optimizer(args, trainable_params):
                     "No PagedAdamW8bit. The version of bitsandbytes installed seems to be old. Please install 0.39.0 or later. / PagedAdamW8bitが定義されていません。インストールされているbitsandbytesのバージョンが古いようです。0.39.0以上をインストールしてください"
                 )
         elif optimizer_type == "PagedLion8bit".lower():
-            print(f"use 8-bit Paged Lion optimizer | {optimizer_kwargs}")
+            # print(f"use 8-bit Paged Lion optimizer | {optimizer_kwargs}")
             try:
                 optimizer_class = bnb.optim.PagedLion8bit
             except AttributeError:
@@ -3555,7 +3555,7 @@ def get_optimizer(args, trainable_params):
         optimizer = optimizer_class(trainable_params, lr=lr, **optimizer_kwargs)
 
     elif optimizer_type == "PagedAdamW".lower():
-        print(f"use PagedAdamW optimizer | {optimizer_kwargs}")
+        # print(f"use PagedAdamW optimizer | {optimizer_kwargs}")
         try:
             import bitsandbytes as bnb
         except ImportError:
@@ -3569,7 +3569,7 @@ def get_optimizer(args, trainable_params):
         optimizer = optimizer_class(trainable_params, lr=lr, **optimizer_kwargs)
 
     elif optimizer_type == "PagedAdamW32bit".lower():
-        print(f"use 32-bit PagedAdamW optimizer | {optimizer_kwargs}")
+        # print(f"use 32-bit PagedAdamW optimizer | {optimizer_kwargs}")
         try:
             import bitsandbytes as bnb
         except ImportError:
@@ -3583,7 +3583,7 @@ def get_optimizer(args, trainable_params):
         optimizer = optimizer_class(trainable_params, lr=lr, **optimizer_kwargs)
 
     elif optimizer_type == "SGDNesterov".lower():
-        print(f"use SGD with Nesterov optimizer | {optimizer_kwargs}")
+        # print(f"use SGD with Nesterov optimizer | {optimizer_kwargs}")
         if "momentum" not in optimizer_kwargs:
             print(f"SGD with Nesterov must be with momentum, set momentum to 0.9 / SGD with Nesterovはmomentum指定が必須のため0.9に設定します")
             optimizer_kwargs["momentum"] = 0.9
@@ -3624,25 +3624,25 @@ def get_optimizer(args, trainable_params):
             # set optimizer
             if optimizer_type == "DAdaptation".lower() or optimizer_type == "DAdaptAdamPreprint".lower():
                 optimizer_class = experimental.DAdaptAdamPreprint
-                print(f"use D-Adaptation AdamPreprint optimizer | {optimizer_kwargs}")
+                # print(f"use D-Adaptation AdamPreprint optimizer | {optimizer_kwargs}")
             elif optimizer_type == "DAdaptAdaGrad".lower():
                 optimizer_class = dadaptation.DAdaptAdaGrad
-                print(f"use D-Adaptation AdaGrad optimizer | {optimizer_kwargs}")
+                # print(f"use D-Adaptation AdaGrad optimizer | {optimizer_kwargs}")
             elif optimizer_type == "DAdaptAdam".lower():
                 optimizer_class = dadaptation.DAdaptAdam
-                print(f"use D-Adaptation Adam optimizer | {optimizer_kwargs}")
+                # print(f"use D-Adaptation Adam optimizer | {optimizer_kwargs}")
             elif optimizer_type == "DAdaptAdan".lower():
                 optimizer_class = dadaptation.DAdaptAdan
-                print(f"use D-Adaptation Adan optimizer | {optimizer_kwargs}")
+                # print(f"use D-Adaptation Adan optimizer | {optimizer_kwargs}")
             elif optimizer_type == "DAdaptAdanIP".lower():
                 optimizer_class = experimental.DAdaptAdanIP
-                print(f"use D-Adaptation AdanIP optimizer | {optimizer_kwargs}")
+                # print(f"use D-Adaptation AdanIP optimizer | {optimizer_kwargs}")
             elif optimizer_type == "DAdaptLion".lower():
                 optimizer_class = dadaptation.DAdaptLion
-                print(f"use D-Adaptation Lion optimizer | {optimizer_kwargs}")
+                # print(f"use D-Adaptation Lion optimizer | {optimizer_kwargs}")
             elif optimizer_type == "DAdaptSGD".lower():
                 optimizer_class = dadaptation.DAdaptSGD
-                print(f"use D-Adaptation SGD optimizer | {optimizer_kwargs}")
+                # print(f"use D-Adaptation SGD optimizer | {optimizer_kwargs}")
             else:
                 raise ValueError(f"Unknown optimizer type: {optimizer_type}")
 
@@ -3846,14 +3846,14 @@ def prepare_dataset_args(args: argparse.Namespace, support_metadata: bool):
 
 
 def load_tokenizer(args: argparse.Namespace):
-    print("prepare tokenizer")
+    # print("prepare tokenizer")
     original_path = V2_STABLE_DIFFUSION_PATH if args.v2 else TOKENIZER_PATH
 
     tokenizer: CLIPTokenizer = None
     if args.tokenizer_cache_dir:
         local_tokenizer_path = os.path.join(args.tokenizer_cache_dir, original_path.replace("/", "_"))
         if os.path.exists(local_tokenizer_path):
-            print(f"load tokenizer from cache: {local_tokenizer_path}")
+            # print(f"load tokenizer from cache: {local_tokenizer_path}")
             tokenizer = CLIPTokenizer.from_pretrained(local_tokenizer_path)  # same for v1 and v2
 
     if tokenizer is None:
@@ -3863,10 +3863,10 @@ def load_tokenizer(args: argparse.Namespace):
             tokenizer = CLIPTokenizer.from_pretrained(original_path)
 
     if hasattr(args, "max_token_length") and args.max_token_length is not None:
-        print(f"update token length: {args.max_token_length}")
+        # print(f"update token length: {args.max_token_length}")
 
     if args.tokenizer_cache_dir and not os.path.exists(local_tokenizer_path):
-        print(f"save Tokenizer to cache: {local_tokenizer_path}")
+        # print(f"save Tokenizer to cache: {local_tokenizer_path}")
         tokenizer.save_pretrained(local_tokenizer_path)
 
     return tokenizer
@@ -3946,7 +3946,7 @@ def _load_target_model(args: argparse.Namespace, weight_dtype, device="cpu", une
     name_or_path = os.path.realpath(name_or_path) if os.path.islink(name_or_path) else name_or_path
     load_stable_diffusion_format = os.path.isfile(name_or_path)  # determine SD or Diffusers
     if load_stable_diffusion_format:
-        print(f"load StableDiffusion checkpoint: {name_or_path}")
+        # print(f"load StableDiffusion checkpoint: {name_or_path}")
         text_encoder, vae, unet = model_util.load_models_from_stable_diffusion_checkpoint(
             args.v2, name_or_path, device, unet_use_linear_projection_in_v2=unet_use_linear_projection_in_v2
         )
@@ -3991,7 +3991,7 @@ def load_target_model(args, weight_dtype, accelerator, unet_use_linear_projectio
     # load models for each process
     for pi in range(accelerator.state.num_processes):
         if pi == accelerator.state.local_process_index:
-            print(f"loading model for process {accelerator.state.local_process_index}/{accelerator.state.num_processes}")
+            # print(f"loading model for process {accelerator.state.local_process_index}/{accelerator.state.num_processes}")
 
             text_encoder, vae, unet, load_stable_diffusion_format = _load_target_model(
                 args,

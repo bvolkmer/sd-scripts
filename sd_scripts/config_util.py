@@ -538,13 +538,13 @@ def generate_dataset_group_by_blueprint(dataset_group_blueprint: DatasetGroupBlu
                     "    ",
                 )
 
-    print(info)
+    # print(info)
 
     # make buckets first because it determines the length of dataset
     # and set the same seed for all datasets
     seed = random.randint(0, 2**31)  # actual seed is seed + epoch_no
     for i, dataset in enumerate(datasets):
-        print(f"[Dataset {i}]")
+        # print(f"[Dataset {i}]")
         dataset.make_buckets()
         dataset.set_seed(seed)
 

@@ -892,7 +892,7 @@ class LoRANetwork(torch.nn.Module):
             text_encoder_loras, skipped = create_modules(False, index, text_encoder, LoRANetwork.TEXT_ENCODER_TARGET_REPLACE_MODULE)
             self.text_encoder_loras.extend(text_encoder_loras)
             skipped_te += skipped
-        print(f"create LoRA for Text Encoder: {len(self.text_encoder_loras)} modules.")
+        # print(f"create LoRA for Text Encoder: {len(self.text_encoder_loras)} modules.")
 
         # extend U-Net target modules if conv2d 3x3 is enabled, or load from weights
         target_modules = LoRANetwork.UNET_TARGET_REPLACE_MODULE
@@ -900,15 +900,15 @@ class LoRANetwork(torch.nn.Module):
             target_modules += LoRANetwork.UNET_TARGET_REPLACE_MODULE_CONV2D_3X3
 
         self.unet_loras, skipped_un = create_modules(True, None, unet, target_modules)
-        print(f"create LoRA for U-Net: {len(self.unet_loras)} modules.")
+        # print(f"create LoRA for U-Net: {len(self.unet_loras)} modules.")
 
         skipped = skipped_te + skipped_un
-        if varbose and len(skipped) > 0:
-            print(
-                f"because block_lr_weight is 0 or dim (rank) is 0, {len(skipped)} LoRA modules are skipped / block_lr_weightまたはdim (rank)が0の為、次の{len(skipped)}個のLoRAモジュールはスキップされます:"
-            )
-            for name in skipped:
-                print(f"\t{name}")
+        # if varbose and len(skipped) > 0:
+        #     print(
+        #         f"because block_lr_weight is 0 or dim (rank) is 0, {len(skipped)} LoRA modules are skipped / block_lr_weightまたはdim (rank)が0の為、次の{len(skipped)}個のLoRAモジュールはスキップされます:"
+        #     )
+        #     for name in skipped:
+        #         print(f"\t{name}")
 
         self.up_lr_weight: List[float] = None
         self.down_lr_weight: List[float] = None
@@ -939,12 +939,14 @@ class LoRANetwork(torch.nn.Module):
 
     def apply_to(self, text_encoder, unet, apply_text_encoder=True, apply_unet=True):
         if apply_text_encoder:
-            print("enable LoRA for text encoder")
+            ...
+            # print("enable LoRA for text encoder")
         else:
             self.text_encoder_loras = []
 
         if apply_unet:
-            print("enable LoRA for U-Net")
+            ...
+            # print("enable LoRA for U-Net")
         else:
             self.unet_loras = []
 
@@ -966,12 +968,14 @@ class LoRANetwork(torch.nn.Module):
                 apply_unet = True
 
         if apply_text_encoder:
-            print("enable LoRA for text encoder")
+            ...
+            # print("enable LoRA for text encoder")
         else:
             self.text_encoder_loras = []
 
         if apply_unet:
-            print("enable LoRA for U-Net")
+            ...
+            # print("enable LoRA for U-Net")
         else:
             self.unet_loras = []
 
@@ -982,7 +986,7 @@ class LoRANetwork(torch.nn.Module):
                     sd_for_lora[key[len(lora.lora_name) + 1 :]] = weights_sd[key]
             lora.merge_to(sd_for_lora, dtype, device)
 
-        print(f"weights are merged")
+        # print(f"weights are merged")
 
     # 層別学習率用に層ごとの学習率に対する倍率を定義する　引数の順番が逆だがとりあえず気にしない
     def set_block_lr_weight(
