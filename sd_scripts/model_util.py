@@ -3,7 +3,7 @@
 
 import math
 import os
-from typing import Any
+from typing import Union
 
 import torch
 from diffusers import (
@@ -1089,7 +1089,7 @@ def load_checkpoint_with_text_encoder_conversion(ckpt_path, device="cpu"):
 def load_models_from_stable_diffusion_checkpoint(
     v2,
     ckpt_path,
-    device: str | torch.device = "cpu",
+    device: Union[str, torch.device] = "cpu",
     dtype=None,
     unet_use_linear_projection_in_v2=False,
 ):
