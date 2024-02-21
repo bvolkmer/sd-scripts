@@ -1,4 +1,5 @@
 import argparse
+import asyncio
 import gc
 import importlib
 import json
@@ -8,24 +9,24 @@ import os
 import random
 import sys
 import time
+from math import floor
 from multiprocessing import Value
+from typing import Awaitable, Callable, Optional
 
 import toml
 import torch
+from library.ipex_interop import init_ipex
 from torch.nn.parallel import DistributedDataParallel as DDP
 from tqdm import tqdm
 
-from library.ipex_interop import init_ipex
-
 init_ipex()
-
-from accelerate.utils import set_seed
-from diffusers import DDPMScheduler
 
 import library.config_util as config_util
 import library.custom_train_functions as custom_train_functions
 import library.huggingface_util as huggingface_util
 import library.train_util as train_util
+from accelerate.utils import set_seed
+from diffusers import DDPMScheduler
 from library import model_util
 from library.config_util import BlueprintGenerator, ConfigSanitizer
 from library.custom_train_functions import (
@@ -39,6 +40,11 @@ from library.custom_train_functions import (
 from library.train_util import DreamBoothDataset
 
 logger = logging.getLogger(__name__)
+
+# The time factor at wich latent caching is faster that training per step. This is a
+# rough estimate and may vary depending on the hardware. It is used for the progress bar
+# TODO(bvolkmer): reevaluate this <2024-02-21>
+CACHING_TIME_ESTIMATE = 30
 
 
 class NetworkTrainer:
@@ -199,7 +205,11 @@ class NetworkTrainer:
             unet,
         )
 
-    def train(self, args):
+    async def train_async(
+        self,
+        args,
+        progress_callback: Optional[Callable[[int, int, str], Awaitable[None]]] = None,
+    ):
         session_id = random.randint(0, 2**32)
         training_started_at = time.time()
         train_util.verify_training_args(args)
@@ -350,6 +360,25 @@ class NetworkTrainer:
 
             logger.debug(f"all weights merged: {', '.join(args.base_weights)}")
 
+        global latent_cache_total_steps
+        global latent_cache_step
+        latent_cache_total_steps = Value("i", 0)  # type: ignore
+        latent_cache_step = Value("i", 0)  # type: ignore
+
+        async def progress_wrapper(step: int, total_steps: int, status: str) -> None:
+            if progress_callback is not None and step % CACHING_TIME_ESTIMATE == 0:
+                global latent_cache_total_steps
+                global latent_cache_step
+                latent_cache_total_steps.value = int(
+                    floor(total_steps / CACHING_TIME_ESTIMATE)
+                )
+                latent_cache_step.value = int(floor(step / CACHING_TIME_ESTIMATE))
+                await progress_callback(
+                    latent_cache_step.value,
+                    latent_cache_total_steps.value + args.max_train_steps,
+                    status,
+                )
+
         # 学習を準備する
         if cache_latents:
             logger.info("caching latents")
@@ -357,11 +386,14 @@ class NetworkTrainer:
             vae.requires_grad_(False)
             vae.eval()
             with torch.no_grad():
-                train_dataset_group.cache_latents(
+                await train_dataset_group.cache_latents_async(
                     vae,
                     args.vae_batch_size,
                     args.cache_latents_to_disk,
                     accelerator.is_main_process,
+                    progress_callback=(
+                        progress_wrapper if progress_callback is not None else None
+                    ),
                 )
             vae.to("cpu")
             if torch.cuda.is_available():
@@ -839,11 +871,15 @@ class NetworkTrainer:
             if key in metadata:
                 minimum_metadata[key] = metadata[key]
 
-        progress_bar = tqdm(
-            range(args.max_train_steps),
-            smoothing=0,
-            disable=not accelerator.is_local_main_process,
-            desc="steps",
+        progress_bar = (
+            tqdm(
+                range(args.max_train_steps),
+                smoothing=0,
+                disable=not accelerator.is_local_main_process,
+                desc="steps",
+            )
+            if progress_callback is None
+            else None
         )
         global_step = 0
 
@@ -1099,8 +1135,16 @@ class NetworkTrainer:
 
                 # Checks if the accelerator has performed an optimization step behind the scenes
                 if accelerator.sync_gradients:
-                    progress_bar.update(1)
                     global_step += 1
+                    if progress_bar is not None:
+                        progress_bar.update(1)
+                    elif progress_callback is not None:
+                        await progress_callback(
+                            latent_cache_step.value + global_step,  # type: ignore
+                            latent_cache_total_steps.value  # type: ignore
+                            + args.max_train_steps,
+                            "training",
+                        )
 
                     self.sample_images(
                         accelerator,
@@ -1149,9 +1193,10 @@ class NetworkTrainer:
                 loss_recorder.add(epoch=epoch, step=step, loss=current_loss)
                 avr_loss: float = loss_recorder.moving_average
                 logs = {"avr_loss": avr_loss}  # , "lr": lr_scheduler.get_last_lr()[0]}
-                progress_bar.set_postfix(**logs)
+                if progress_bar is not None:
+                    progress_bar.set_postfix(**logs)
 
-                if args.scale_weight_norms:
+                if args.scale_weight_norms and progress_bar is not None:
                     progress_bar.set_postfix(**{**max_mean_logs, **logs})
 
                 if args.logging_dir is not None:
@@ -1239,6 +1284,9 @@ class NetworkTrainer:
             )
 
             logger.debug("model saved.")
+
+    def train(self, args):
+        asyncio.run(self.train_async(args))
 
 
 def setup_parser() -> argparse.ArgumentParser:

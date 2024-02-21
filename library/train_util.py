@@ -19,9 +19,22 @@ import shutil
 import subprocess
 import time
 from io import BytesIO
-from typing import Dict, List, NamedTuple, Optional, Sequence, Tuple, Union
+from typing import (
+    Awaitable,
+    Callable,
+    Dict,
+    List,
+    NamedTuple,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 import cv2
+import library.huggingface_util as huggingface_util
+import library.model_util as model_util
+import library.sai_model_spec as sai_model_spec
 import numpy as np
 import safetensors.torch
 import toml
@@ -49,22 +62,18 @@ from diffusers import (
 )
 from diffusers.optimization import TYPE_TO_SCHEDULER_FUNCTION, SchedulerType
 from huggingface_hub import hf_hub_download
-from PIL import Image
-from torch.nn.parallel import DistributedDataParallel as DDP
-from torch.optim import Optimizer
-from torchvision import transforms
-from tqdm import tqdm
-from transformers import CLIPTextModel, CLIPTextModelWithProjection, CLIPTokenizer
-
-import library.huggingface_util as huggingface_util
-import library.model_util as model_util
-import library.sai_model_spec as sai_model_spec
 from library import custom_train_functions
 from library.lpw_stable_diffusion import StableDiffusionLongPromptWeightingPipeline
 
 # from library.attention_processors import FlashAttnProcessor
 # from library.hypernetwork import replace_attentions_for_hypernetwork
 from library.original_unet import UNet2DConditionModel
+from PIL import Image
+from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.optim import Optimizer
+from torchvision import transforms
+from tqdm import tqdm
+from transformers import CLIPTextModel, CLIPTextModelWithProjection, CLIPTokenizer
 
 logger = logging.getLogger(__name__)
 
@@ -885,7 +894,7 @@ class BaseDataset(torch.utils.data.Dataset):
         min_size and max_size are ignored when enable_bucket is False
         """
         logger.debug("loading image sizes.")
-        for info in tqdm(self.image_data.values()):
+        for info in self.image_data.values():
             if info.image_size is None:
                 info.image_size = self.get_image_size(info.absolute_path)
 
@@ -1024,8 +1033,13 @@ class BaseDataset(torch.utils.data.Dataset):
             for subset in self.subsets
         ])
 
-    def cache_latents(
-        self, vae, vae_batch_size=1, cache_to_disk=False, is_main_process=True
+    async def cache_latents_async(
+        self,
+        vae,
+        vae_batch_size=1,
+        cache_to_disk=False,
+        is_main_process=True,
+        progress_callback: Optional[Callable[[int, int, str], Awaitable[None]]] = None,
     ):
         # マルチGPUには対応していないので、そちらはtools/cache_latents.pyを使うこと
         logger.debug("caching latents.")
@@ -1039,7 +1053,7 @@ class BaseDataset(torch.utils.data.Dataset):
         batches = []
         batch = []
         logger.debug("checking cache validity...")
-        for info in tqdm(image_infos):
+        for info in image_infos:
             subset = self.image_to_subset[info.image_key]
 
             if info.latents_npz is not None:  # fine tuning dataset
@@ -1080,10 +1094,31 @@ class BaseDataset(torch.utils.data.Dataset):
 
         # iterate batches: batch doesn't have image, image will be loaded in cache_batch_latents and discarded
         logger.debug("caching latents...")
-        for batch in tqdm(batches, smoothing=1, total=len(batches)):
+        progress_bar = (
+            tqdm(total=len(image_infos), smoothing=1)
+            if progress_callback is None
+            else None
+        )
+        counter = 0
+        if progress_callback is not None:
+            await progress_callback(0, len(batches), "caching latents")
+        for batch in batches:
             cache_batch_latents(
                 vae, cache_to_disk, batch, subset.flip_aug, subset.random_crop
             )
+            counter += 1
+            progress_bar.update(1) if progress_bar is not None else None
+            if progress_callback is not None:
+                await progress_callback(counter, len(batches), "caching latents")
+
+    def cache_latents(
+        self, vae, vae_batch_size=1, cache_to_disk=False, is_main_process=True
+    ):
+        asyncio.run(
+            self.cache_latents_async(
+                vae, vae_batch_size, cache_to_disk, is_main_process
+            )
+        )
 
     # weight_dtypeを指定するとText Encoderそのもの、およひ出力がweight_dtypeになる
     # SDXLでのみ有効だが、datasetのメソッドとする必要があるので、sdxl_train_util.pyではなくこちらに実装する
@@ -1106,7 +1141,7 @@ class BaseDataset(torch.utils.data.Dataset):
 
         logger.debug("checking cache existence...")
         image_infos_to_cache = []
-        for info in tqdm(image_infos):
+        for info in image_infos:
             # subset = self.image_to_subset[info.image_key]
             if cache_to_disk:
                 te_out_npz = (
@@ -1151,7 +1186,7 @@ class BaseDataset(torch.utils.data.Dataset):
 
         # iterate batches: call text encoder and cache outputs for memory or disk
         logger.debug("caching text encoder outputs...")
-        for batch in tqdm(batches):
+        for batch in batches:
             infos, input_ids1, input_ids2 = zip(*batch)
             input_ids1 = torch.stack(input_ids1, dim=0)
             input_ids2 = torch.stack(input_ids2, dim=0)
@@ -2225,12 +2260,45 @@ class DatasetGroup(torch.utils.data.ConcatDataset):
         for dataset in self.datasets:
             dataset.enable_XTI(*args, **kwargs)
 
+    async def cache_latents_async(
+        self,
+        vae,
+        vae_batch_size=1,
+        cache_to_disk=False,
+        is_main_process=True,
+        progress_callback: Optional[Callable[[int, int, str], Awaitable[None]]] = None,
+    ):
+        total_len = sum([len(dataset) for dataset in self.datasets])
+
+        async def progress_wrapper(step: int, total_steps: int, status: str) -> None:
+            if progress_callback is not None:
+                await progress_callback(
+                    step + (i * total_steps),
+                    total_len,
+                    status,
+                )
+
+        for i, dataset in enumerate(self.datasets):
+
+            logger.debug(f"[Dataset {i}]")
+            await dataset.cache_latents_async(
+                vae,
+                vae_batch_size,
+                cache_to_disk,
+                is_main_process,
+                progress_callback=(
+                    progress_wrapper if progress_callback is not None else None
+                ),
+            )
+
     def cache_latents(
         self, vae, vae_batch_size=1, cache_to_disk=False, is_main_process=True
     ):
-        for i, dataset in enumerate(self.datasets):
-            logger.debug(f"[Dataset {i}]")
-            dataset.cache_latents(vae, vae_batch_size, cache_to_disk, is_main_process)
+        asyncio.run(
+            cache_latents_async(
+                self, vae, vae_batch_size, cache_to_disk, is_main_process
+            )
+        )
 
     def cache_text_encoder_outputs(
         self,
